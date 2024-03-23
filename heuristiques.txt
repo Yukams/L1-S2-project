@@ -1,0 +1,109 @@
+======================================================================================================
+
+Comportement de l'IA naïve :
+
+A chaque tour, l'IA va "scanner" l'ensemble de la grille à la recherche de ses pions => Fonction ia_find_pawn
+    => Elle va les lister dans une variable appelée ia_pawn_list (fonction ia_movepool)
+
+Elle prend ensuite chaque couple de coordonnées et va les tester une par une dans la fonction ia_test_move
+    => Cette fonction va tester chaque mouvement possible du pion qui lui est donné en argument
+    => Elle enregistre tous les mouvements corrects dans une liste qu'elle renvoie ensuite vers ia_movepool
+
+    => Si cette liste est vide, alors on passe directement au prochain pion
+    => Si cette liste contient au moins un mouvement, alors on enregistre le x,y du pion ainsi que sa liste de mouvement
+        => sous la forme [x, y, [[mouv1_x, mouv1_y], [mouv2_x, mouv2_y], ...]]
+
+Une fois tous les pions et leurs mouvements possibles enregistrés dans une "super-liste", elle est renvoyée à la fonction turn_ia, plus précisément dans la variable movepool
+
+Ensuite, il est demandé à l'ordinateur de générer un nombre aléatoire. Si 2 pions peuvent jouer par exemple, ce nombre sera compris entre 0 et 1
+En fonction du résultat, l'IA va donc sélectionner une "paire" d'information sous la forme
+[x, y, [[mouv1_x, mouv1_y], [mouv2_x, mouv2_y], ...]]
+
+L'IA va enregistrer le x et le y dans deux variables (respectivement : ia_pawn_line et ia_pawn_column)
+Puis, elle va demander à nouveau un nombre aléatoire. Si le pion en x, y possède 3 mouvements, ce nombre sera compris entre 0 et 2
+En fonction du résultat, l'IA va donc sélectionner une "sous-paire" d'information sous la forme [mouv1_x, mouv1_y]
+
+Elle va les enregistrer dans les variables ia_move_line et ia_move_column
+
+Puis elle va traiter ces informations pour effectuer un déplacement du pion à la position [x,y] vers la position
+[mouv1_x, mouv1_y]
+
+Si ce mouvement était un saut, elle va alors, de manière aléatoire, choisir si oui ou non elle saute de nouveau (1/2 chance) (fonction ia_turn)
+    => Si elle rejoue, l'IA sera limitée dans ses choix de mouvements et ne pourra choisir que des sauts
+    => Puis elle pourra à nouveau choisir de sauter ou non, etc.
+
+          ======================================================================================================
+
+Exemple :
+L'IA en situation de grille de départ, équipe blanche, cherche ses pions et les liste avec leurs mouvements:
+[[1, 0, [[2, 0], [3, 0], [0, 0], [1, 1], [3, 2]]], [1, 2, [[2, 2], [3, 2], [0, 2], [1, 3], [1, 1], [3, 4], [3, 0]]], [1, 4, [[2, 4], [3, 4], [1, 5], [1, 3], [3, 6], [3, 2]]], [1, 6, [[2, 6], [3, 6], [0, 6], [1, 7], [1, 5], [3, 4]]], [2, 1, [[3, 1], [1, 1], [0, 1], [2, 2], [2, 0]]], [2, 3, [[3, 3], [1, 3], [2, 4], [2, 2], [0, 5], [0, 1]]], [2, 5, [[3, 5], [1, 5], [0, 5], [2, 6], [2, 4], [0, 7]]], [2, 7, [[3, 7], [1, 7], [0, 7], [2, 6], [0, 5]]]]
+
+Elle choisit ensuite un pion aléatoirement entre les 8... Celui ci par exemple :
+[1, 6, [[2, 6], [3, 6], [0, 6], [1, 7], [1, 5], [3, 4]]]
+
+Elle choisit maintenant un mouvement aléatoire entre les 6 proposés... Celui ci par exemple:
+[2, 6]
+
+L'IA déplace alors le pion blanc 1,6("B7") vers 2,6("C7")
+
+
+
+======================================================================================================
+
+Comportement de l'IA "avancée" :
+
+A chaque tour, l'IA va "scanner" l'ensemble de la grille à la recherche de ses pions => Fonction ia_find_pawn
+    => Elle va les lister dans une variable appelée ia_pawn_list (fonction ia_movepool)
+
+Elle prend ensuite chaque couple de coordonnées et va les tester une par une dans la fonction ia_test_move
+    => Cette fonction va tester chaque mouvement possible du pion qui lui est donné en argument
+    => Elle enregistre tous les mouvements corrects dans une liste qu'elle renvoie ensuite vers ia_movepool
+
+    => Si cette liste est vide, alors on passe directement au prochain pion
+    => Si cette liste contient au moins un mouvement, alors on enregistre le x,y du pion ainsi que sa liste de mouvement
+        => sous la forme [x, y, [[mouv1_x, mouv1_y], [mouv2_x, mouv2_y], ...]]
+
+Une fois tous les pions et leurs mouvements possibles enregistrés dans une "super-liste",
+elle est renvoyée à la fonction turn_advanced_ia, plus précisément dans la variable movepool
+
+Ensuite, l'IA va faire passer le movepool dans la fonction ia_find_best_move
+    => Elle récupère les positions des goals adverses
+    => Elle crée une deuxième liste, move_score_list, qui va répertorier les scores des mouvements par le même indice
+
+    => Boucle for qui prend un par un chaque pion ainsi que ses déplacements possibles
+        => Determine un score pour chaque mouvement (fonction ia_find_score)
+            => Donne un score au pion selectionné
+            => Pour chaque mouvement du pion, détermine un score
+
+            ### Le score est determiné en fonction de la distance entre le pion / le mouvement et les buts adverses
+            ### Plus le score est élevé, plus le pion / mouvement est éloigné
+
+            => Si le score du mouvement est supérieur au score du pion, c'est à dire qu'en effectuant ce mouvement,
+            le pion s'éloignerait des goals adverses, alors on supprime ce mouvement de la liste
+
+            => Si la liste résultante n'est pas vide, on l'envoie dans la fonction ia_find_best_score
+                => Elle trie par ordre croissant les mouvements et leurs scores
+                => S'il existe deux mouvements au moins ayant le même score et que ce score est le plus bas, on
+                fait passer la liste dans la fonction ia_randomize_best_score
+                    => Cette fonction supprime les élements qui n'ont pas ce score
+                    => Elle attribue ensuite un score aléatoire aux mouvements puis renvoie la liste à la fonction
+                    ia_find_best_score
+                        => Qui trie à nouveau cette liste dans l'ordre croissant puis, renvoie le mouvement au plus
+                        petit score
+
+
+        => Met chaque mouvement dans la liste move_score_list
+        => Effectue un tri dans l'ordre croissant
+        => Renvoie le pion avec le mouvement qui a le plus petit score
+
+    => Si la fonction ne renvoie aucun pion (possible si aucune score n'est inférieur à celui du pion actuel), on
+    lance alors un tour de jeu aléatoire avec la fonction turn_ia_random
+
+    => Si ce mouvement est un saut
+        => Via la fonction ia_test_move on répertorie tous les déplacements de type saut possible pour ce même pion
+        sur sa nouvelle position dans une liste
+        => On supprime le déplacement qu'on vient d'effectuer pour ne pas revenir sur nos pas
+        => Si la liste est vide, on passe au prochain tour
+    => Si ce mouvement n'est pas un saut, on passe au prochain tour
+
+    Pour l'enchaînement, tout se passe de la même manière
